@@ -53,8 +53,10 @@ lib_fixups: lib_fixups_user_type = {
 }
 
 blob_fixups: blob_fixups_user_type = {
-    'vendor/lib64/libsnapdragoncolor-manager.so': blob_fixup()
-        .replace_needed('libtinyxml2.so', 'libtinyxml2_1.so'),
+        'system_ext/etc/seccomp_policy/tcmd.policy': blob_fixup()
+        .regex_replace(r'\Z', '\nlseek: 1\n'),
+         ('odm/bin/touchDaemon', 'odm/bin/hw/vendor.oplus.hardware.biometrics.fingerprint@2.1-service_uff', 'vendor/bin/poweropt-service', 'vendor/lib64/libaodoptfeature.so', 'vendor/lib64/libapengine.so', 'vendor/lib64/libdpps.so', 'vendor/lib64/libpowercore.so', 'vendor/lib64/libpsmoptfeature.so', 'vendor/lib64/libsnapdragoncolor-manager.so', 'vendor/lib64/libstandbyfeature.so', 'vendor/lib64/libvideooptfeature.so'): blob_fixup()
+        .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
     'vendor/bin/hw/vendor.qti.hardware.display.composer-service': blob_fixup()
         .replace_needed('vendor.qti.hardware.display.config-V5-ndk_platform.so', 'vendor.qti.hardware.display.config-V5-ndk.so')
         .replace_needed('android.hardware.common-V2-ndk_platform.so', 'android.hardware.common-V2-ndk.so'),
@@ -81,12 +83,11 @@ blob_fixups: blob_fixups_user_type = {
         .add_needed('libinput_shim.so')
         .add_needed('libbinder_shim.so'),
     'system_ext/lib64/libwfdmmsrc_system.so': blob_fixup()
-        .add_needed('libgui_shim.so')
-        .replace_needed('android.hidl.base@1.0.so', 'libhidlbase.so'),
-    'system_ext/bin/wfdservice64': blob_fixup()
-        .add_needed('libwfdservice_shim.so'),
-    'system_ext/lib64/libwfdservice.so': blob_fixup()
-        .replace_needed('android.media.audio.common.types-V2-cpp.so', 'android.media.audio.common.types-V4-cpp.so'),
+        .add_needed('libaudiobase.so')
+        .add_needed('libgui_shim.so'),
+        'system_ext/lib64/libwfdservice.so': blob_fixup()
+        .add_needed('libaudiobase.so')
+        .replace_needed('android.media.audio.common.types-V4-cpp.so', 'android.media.audio.common.types-V5-cpp.so'),
     'vendor/bin/qguard': blob_fixup()
         .add_needed('libbase_shim.so'),
     ('vendor/etc/media_cape/video_system_specs.json', 'vendor/etc/media_taro/video_system_specs.json'): blob_fixup()

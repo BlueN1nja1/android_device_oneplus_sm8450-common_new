@@ -72,8 +72,6 @@ vendor/lib/rfsa/adsp/bm2n54.bin
 vendor/lib/rfsa/adsp/bm2n55.bin
 vendor/lib/rfsa/adsp/libDspIOProxy_skel.so
 vendor/lib/rfsa/adsp/libQ6MSFR_manager_skel.so
-vendor/lib/rfsa/adsp/libVppFrcQnnHtp
-vendor/lib/rfsa/adsp/libVppQnnHtp
 vendor/lib/rfsa/adsp/libadsp_jpege_skel.so
 vendor/lib/rfsa/adsp/libapn_dsp_skel.so
 vendor/lib/rfsa/adsp/libbitml_nsp_skel.so
@@ -91,17 +89,27 @@ vendor/lib/rfsa/adsp/libhalide_hexagon_remote_skel.so
 vendor/lib/rfsa/adsp/libhdr_skel.so;MODULE_SUFFIX=_vendor
 vendor/lib/rfsa/adsp/libhme_dsp_skel.so
 vendor/lib/rfsa/adsp/libmctfengine_skel.so
-vendor/lib/rfsa/adsp/libmobilenet_dsp_frc
-vendor/lib/rfsa/adsp/libmobilenet_dsp_frc_networks
 vendor/lib/rfsa/adsp/libosie_skel.so
 vendor/lib/rfsa/adsp/libqvr_cam_dsp_driver_skel.so
 vendor/lib/rfsa/adsp/libqvr_dsp_driver_skel.so
 vendor/lib/rfsa/adsp/libscveT2T_skel.so
 vendor/lib/rfsa/adsp/libtracker_6dof_skel_8250.so
 vendor/lib/rfsa/adsp/libtracker_6dof_skel_8350.so
+vendor/lib/rfsa/adsp/libVppFrcQnnHtp
+vendor/lib/rfsa/adsp/libVppQnnHtp
 vendor/lib/rfsa/adsp/libvpp_ais_networks
 vendor/lib/rfsa/adsp/libvpp_vqa_networks
+vendor/lib/rfsa/adsp/libmobilenet_dsp_frc
+vendor/lib/rfsa/adsp/libmobilenet_dsp_frc_networks
 vendor/lib/rfsa/adsp/libvpt_action_recognition
+vendor/lib/rfsa/adsp/libVppFrcQnnHtp:vendor/lib/rfsa/cdsp/libVppFrcQnnHtp
+vendor/lib/rfsa/adsp/libVppQnnHtp:vendor/lib/rfsa/cdsp/libVppQnnHtp
+vendor/lib/rfsa/adsp/libvpp_ais_networks:vendor/lib/rfsa/cdsp/libvpp_ais_networks
+vendor/lib/rfsa/adsp/libvpp_vqa_networks:vendor/lib/rfsa/cdsp/libvpp_vqa_networks
+vendor/lib/rfsa/adsp/libmobilenet_dsp_frc:vendor/lib/rfsa/cdsp/libmobilenet_dsp_frc
+vendor/lib/rfsa/adsp/libmobilenet_dsp_frc_networks:vendor/lib/rfsa/cdsp/libmobilenet_dsp_frc_networks
+vendor/lib/rfsa/adsp/libvpt_action_recognition:vendor/lib/rfsa/cdsp/libvpt_action_recognition
+vendor/lib/rfsa/adsp/libfastcvdsp_skel.so:vendor/lib/rfsa/cdsp/libfastcvdsp_skel.so
 
 # ANT+
 vendor/lib64/hw/com.dsi.ant@1.0-impl.so
@@ -840,7 +848,7 @@ vendor/lib64/libdsd2pcm.so
 
 # Oplus Log Core
 vendor/lib64/libolc_vnd.so
-vendor/lib64/vendor.oplus.hardware.olc2-V1-ndk_platform.so
+#vendor/lib64/vendor.oplus.hardware.olc2-V1-ndk_platform.so
 
 # Oplus osense
 odm/lib64/libosenseaidlhalclient.so
@@ -1101,7 +1109,7 @@ vendor/lib64/qtiwakelock.so
 vendor/lib64/vendor.oplus.hardware.appradioaidl-V1-ndk_platform.so
 vendor/lib64/vendor.oplus.hardware.communicationcenter-V1-ndk_platform.so
 vendor/lib64/vendor.oplus.hardware.communicationcenter-V2-ndk_platform.so
-vendor/lib64/vendor.oplus.hardware.radio-V2-ndk_platform.so
+#vendor/lib64/vendor.oplus.hardware.radio-V2-ndk_platform.so
 vendor/lib64/vendor.qti.hardware.data.connection@1.0.so
 vendor/lib64/vendor.qti.hardware.data.connection@1.1.so
 vendor/lib64/vendor.qti.hardware.data.connectionfactory-V1-ndk_platform.so
@@ -1228,7 +1236,7 @@ vendor/lib64/libsnsdiaglog.so
 vendor/lib64/libssc.so
 vendor/lib64/libssc_default_listener.so
 vendor/lib64/sensors.ssc.so
-vendor/lib64/vendor.oplus.hardware.cwb@1.0.so
+#vendor/lib64/vendor.oplus.hardware.cwb@1.0.so
 vendor/lib64/vendor.qti.hardware.sensorscalibrate@1.0.so
 
 # Snapdragon Computer Vision Engine
@@ -1288,6 +1296,10 @@ vendor/etc/init/init.time_daemon.rc
 vendor/lib64/libtime_genoff.so
 
 # Touchscreen firmware
+odm/firmware/tp/21001/FW_S3908_SAMSUNG.img
+odm/firmware/tp/21001/FW_S3908_SAMSUNG_FAE.img
+odm/firmware/tp/21001/LIMIT_S3908_SAMSUNG.img
+odm/firmware/tp/21001/LIMIT_S3908_SAMSUNG_AGING.img
 odm/firmware/tp/21631/FW_S3908_SAMSUNG.img
 odm/firmware/tp/21631/FW_S3908_SAMSUNG_FAE.img
 odm/firmware/tp/21631/LIMIT_S3908_SAMSUNG.img

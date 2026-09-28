@@ -15,11 +15,21 @@ on boot
 
     # Display
     chown system system /dev/oplus_display
+
     chown system system /sys/kernel/oplus_display/dimlayer_bl_en
+    chmod 0660 /sys/kernel/oplus_display/dimlayer_bl_en
+
     chown system system /sys/kernel/oplus_display/dynamic_osc_clock
+    chmod 0660 /sys/kernel/oplus_display/dynamic_osc_clock
+
     chown system system /sys/kernel/oplus_display/hbm
+    chmod 0660 /sys/kernel/oplus_display/hbm
+
     chown system system /sys/kernel/oplus_display/notify_fppress
+    chmod 0660 /sys/kernel/oplus_display/notify_fppress
+
     chown system system /sys/kernel/oplus_display/panel_serial_number
+    chmod 0660 /sys/kernel/oplus_display/panel_serial_number
 
     # Sensors
     chown system system /sys/devices/platform/soc/soc:sensor_fb/adsp_notify

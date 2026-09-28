@@ -9,6 +9,18 @@
         </interface>
     </hal>
     <hal format="aidl">
+        <name>vendor.oplus.hardware.cammidasservice</name>
+        <fqname>IMidasService/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>vendor.oplus.hardware.communicationcenter</name>
+        <version>2</version>
+        <interface>
+            <name>ICommunicationCenter</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl">
         <name>vendor.oplus.hardware.ims</name>
         <version>1</version>
         <fqname>IImsStable/OplusImsRadio0</fqname>
@@ -25,7 +37,7 @@
         </interface>
     </hal>
     <hal format="aidl">
-        <name>vendor.oplus.hardware.subsys_interface.subsys_radio</name>
+        <name>vendor.oplus.hardware.subsys_radio</name>
         <version>8</version>
         <interface>
             <name>ISubsysRadio</name>

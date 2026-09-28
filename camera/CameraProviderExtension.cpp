@@ -7,19 +7,17 @@
 #include "CameraProviderExtension.h"
 
 #include <fstream>
-#include <unistd.h>
-#include <android-base/properties.h>
 #include <string>
 
 static const std::string kTorchBrightness = "brightness";
 static const std::string kTorchMaxBrightness = "max_brightness";
-static const std::string kToggleSwitchPath = "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:switch_1/brightness";
+static const std::string kToggleSwitchPath = "/sys/class/leds/led:switch_1/brightness";
 
 static std::string kTorchLedPaths[] = {
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_0",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_1",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_2",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_3",
+    "/sys/class/leds/led:torch_0",
+    "/sys/class/leds/led:torch_1",
+    "/sys/class/leds/led:torch_2",
+    "/sys/class/leds/led:torch_3",
 };
 
 /**
@@ -55,12 +53,12 @@ bool supportsTorchStrengthControlExt() {
 }
 
 bool supportsSetTorchModeExt() {
-    return false;
+    // Return true so the framework bypasses the Oplus HAL and relies solely on this extension
+    return true;
 }
 
 int32_t getTorchMaxStrengthLevelExt() {
-    // SAFE FIX: Read the actual safe maximum from the kernel node.
-    // If the node can't be read, fallback to a safe 200.
+    // Read the actual safe maximum from the generic kernel node.
     auto node = kTorchLedPaths[0] + "/" + kTorchMaxBrightness;
     return get(node, 200);
 }
@@ -75,33 +73,28 @@ int32_t getTorchStrengthLevelExt() {
     return get(node, 0);
 }
 
-void setTorchStrengthLevelExt(int32_t torchStrength, bool enabled) {
-    if (!enabled) {
-        android::base::SetProperty("camera.torch.enabled", "0");
-
-        // Graceful Step-Down Sequence (Prevents PMIC panic)
+void setTorchStrengthLevelExt(int32_t torchStrength) {
+    if (torchStrength == 0) {
+        // Latch off first, then zero out LEDs
+        set(kToggleSwitchPath, 0);
         for (const auto& path : kTorchLedPaths) {
             set(path + "/" + kTorchBrightness, 0);
         }
-
-        // Kill the master switch only after LDOs are zeroed
-        set(kToggleSwitchPath, 0);
         return;
     }
 
-    android::base::SetProperty("camera.torch.level", std::to_string(torchStrength));
-    android::base::SetProperty("camera.torch.enabled", "1");
+    // PM8350c Latch Sequence: Must drop master switch to 0 to accept new PWM values
+    set(kToggleSwitchPath, 0);
 
-    // We no longer force max_brightness. We respect the kernel limits.
     for (const auto& path : kTorchLedPaths) {
         set(path + "/" + kTorchBrightness, torchStrength);
     }
 
-    // Commit the brightness targets
+    // Commit the new brightness targets
     set(kToggleSwitchPath, 1);
 }
 
 void setTorchModeExt(bool enabled) {
     int32_t strength = getTorchDefaultStrengthLevelExt();
-    setTorchStrengthLevelExt(enabled ? strength : 0, enabled);
+    setTorchStrengthLevelExt(enabled ? strength : 0);
 }

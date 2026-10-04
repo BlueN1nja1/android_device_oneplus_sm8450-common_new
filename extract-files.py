@@ -57,6 +57,11 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace(r'\Z', '\nlseek: 1\n'),
          ('odm/bin/touchDaemon', 'odm/bin/hw/vendor.oplus.hardware.biometrics.fingerprint@2.1-service_uff', 'vendor/bin/poweropt-service', 'vendor/lib64/libaodoptfeature.so', 'vendor/lib64/libapengine.so', 'vendor/lib64/libdpps.so', 'vendor/lib64/libpowercore.so', 'vendor/lib64/libpsmoptfeature.so', 'vendor/lib64/libsnapdragoncolor-manager.so', 'vendor/lib64/libstandbyfeature.so', 'vendor/lib64/libvideooptfeature.so'): blob_fixup()
         .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
+        'odm/bin/hw/vendor.oplus.hardware.biometrics.face@1.0-service': blob_fixup()
+        .replace_needed('android.hardware.biometrics.common-V1-ndk_platform.so', 'android.hardware.biometrics.common-V1-ndk.so')
+        .replace_needed('roid.hardware.biometrics.face-V1-ndk_platform.so', 'roid.hardware.biometrics.face-V1-ndk.so')
+        .add_needed('libbase_shim.so')
+        .clear_symbol_version('_ZN7android4base4TrimERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE'),
     'vendor/bin/hw/vendor.qti.hardware.display.composer-service': blob_fixup()
         .replace_needed('vendor.qti.hardware.display.config-V5-ndk_platform.so', 'vendor.qti.hardware.display.config-V5-ndk.so')
         .replace_needed('android.hardware.common-V2-ndk_platform.so', 'android.hardware.common-V2-ndk.so'),

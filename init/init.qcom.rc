@@ -124,6 +124,15 @@ on early-boot
     chmod 0664 /mnt/vendor/persist/data/pfm/licenses/store_4
 
 on boot
+    # Allow Thermal Engine to access available frequencies
+    chmod 0644 /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+    chmod 0644 /sys/class/kgsl/kgsl-3d0/min_pwrlevel
+    chmod 0644 /sys/class/kgsl/kgsl-3d0/gpu_available_frequencies
+    chmod 0644 /sys/class/kgsl/kgsl-3d0/devfreq/available_frequencies
+    chmod 0644 /sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies
+    chmod 0644 /sys/devices/system/cpu/cpufreq/policy4/scaling_available_frequencies
+    chmod 0644 /sys/devices/system/cpu/cpufreq/policy7/scaling_available_frequencies
+
     chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/type
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/state

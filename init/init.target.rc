@@ -91,7 +91,6 @@ on post-fs
     setrlimit 8 67108864 67108864
 
 on late-fs
-    mount_all --late
     mount_all /vendor/etc/fstab.qcom --late
 
 on post-fs-data

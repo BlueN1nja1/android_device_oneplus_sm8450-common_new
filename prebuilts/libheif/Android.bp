@@ -1,6 +1,0 @@
-cc_library_shared {
-    name: "libheif",
-    srcs: ["libheif_dummy.c"],
-    vendor: true,
-    installable: false,
-}

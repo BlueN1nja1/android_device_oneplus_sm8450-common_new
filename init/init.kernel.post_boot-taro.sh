@@ -57,6 +57,14 @@ function configure_zram_parameters() {
 		echo lz4 > /sys/block/zram0/comp_algorithm
 	fi
 
+	#ifdef OPLUS_FEATURE_ZRAM_OPT
+	#Huacai.Zhou@BSP.Kernel.MM, 2021/08/04, add zram opt
+	echo lz4 > /sys/block/zram0/comp_algorithm
+	echo 160 > /sys/module/zram_opt/parameters/vm_swappiness
+	echo 60 > /sys/module/zram_opt/parameters/direct_vm_swappiness
+	echo 0 > /proc/sys/vm/page-cluster
+	#endif
+
 	if [ -f /sys/block/zram0/disksize ]; then
 		if [ -f /sys/block/zram0/use_dedup ]; then
 			echo 1 > /sys/block/zram0/use_dedup
@@ -76,6 +84,92 @@ function configure_zram_parameters() {
 		swapon /dev/block/zram0 -p 32758
 	fi
 }
+
+#ifdef OPLUS_FEATURE_ZRAM_OPT
+function oplus_configure_zram_parameters() {
+    MemTotalStr=`cat /proc/meminfo | grep MemTotal`
+    MemTotal=${MemTotalStr:16:8}
+
+    if [ -f /sys/block/zram0/disksize ]; then
+        # Reset zram0 in case fstab swapon_all mounted a smaller size early
+        swapoff /dev/block/zram0 2>/dev/null
+        echo 1 > /sys/block/zram0/reset
+
+        echo lz4 > /sys/block/zram0/comp_algorithm
+        echo 160 > /sys/module/zram_opt/parameters/vm_swappiness
+        echo 60 > /sys/module/zram_opt/parameters/direct_vm_swappiness
+        echo 0 > /proc/sys/vm/page-cluster
+
+        if [ -f /sys/block/zram0/use_dedup ]; then
+            echo 1 > /sys/block/zram0/use_dedup
+        fi
+
+        if [ $MemTotal -le 524288 ]; then
+            echo 402653184 > /sys/block/zram0/disksize
+        elif [ $MemTotal -le 1048576 ]; then
+            echo 805306368 > /sys/block/zram0/disksize
+        elif [ $MemTotal -le 2097152 ]; then
+            echo 1342177280 > /sys/block/zram0/disksize
+        elif [ $MemTotal -le 3145728 ]; then
+            echo 1610612736 > /sys/block/zram0/disksize
+        elif [ $MemTotal -le 4194304 ]; then
+            echo 2684354560 > /sys/block/zram0/disksize
+        elif [ $MemTotal -le 6291456 ]; then
+            echo 3221225472 > /sys/block/zram0/disksize
+        else
+            # Config 8GB (8589934592 bytes) zramsize for >= 8GB RAM models
+            echo 8589934592 > /sys/block/zram0/disksize
+        fi
+        mkswap /dev/block/zram0
+        swapon /dev/block/zram0 -p 32758
+    fi
+}
+
+function oplus_configure_hybridswap() {
+	kernel_version=`uname -r`
+
+	if [[ "$kernel_version" == "5.10"* ]]; then
+		echo 160 > /sys/module/oplus_bsp_zram_opt/parameters/vm_swappiness
+	else
+		echo 160 > /sys/module/zram_opt/parameters/vm_swappiness
+	fi
+
+	echo 0 > /proc/sys/vm/page-cluster
+
+	# FIXME: set system memcg pata in init.kernel.post_boot-lahaina.sh temporary
+	echo 500 > /dev/memcg/system/memory.app_score
+	echo systemserver > /dev/memcg/system/memory.name
+}
+
+#/*Add swappiness tunning parameters*/
+function oplus_configure_tuning_swappiness() {
+	local MemTotalStr=`cat /proc/meminfo | grep MemTotal`
+	local MemTotal=${MemTotalStr:16:8}
+	local para_path=/proc/sys/vm
+	local kernel_version=`uname -r`
+
+	if [[ "$kernel_version" == "5.10"* ]]; then
+		para_path=/sys/module/oplus_bsp_zram_opt/parameters
+	fi
+
+	if [ $MemTotal -le 6291456 ]; then
+		echo 0 > $para_path/vm_swappiness_threshold1
+		echo 0 > $para_path/swappiness_threshold1_size
+		echo 0 > $para_path/vm_swappiness_threshold2
+		echo 0 > $para_path/swappiness_threshold2_size
+	elif [ $MemTotal -le 8388608 ]; then
+		echo 70  > $para_path/vm_swappiness_threshold1
+		echo 2000 > $para_path/swappiness_threshold1_size
+		echo 90  > $para_path/vm_swappiness_threshold2
+		echo 1500 > $para_path/swappiness_threshold2_size
+	else
+		echo 70  > $para_path/vm_swappiness_threshold1
+		echo 4096 > $para_path/swappiness_threshold1_size
+		echo 90  > $para_path/vm_swappiness_threshold2
+		echo 2048 > $para_path/swappiness_threshold2_size
+	fi
+}
+#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 
 function configure_read_ahead_kb_values() {
 	MemTotalStr=`cat /proc/meminfo | grep MemTotal`
@@ -132,7 +226,15 @@ function configure_memory_parameters() {
 	#
 	MemTotalStr=`cat /proc/meminfo | grep MemTotal`
 	MemTotal=${MemTotalStr:16:8}
-        configure_zram_parameters
+#ifdef OPLUS_FEATURE_ZRAM_OPT
+oplus_configure_zram_parameters
+if [ -f /sys/block/zram0/hybridswap_enable ]; then
+    oplus_configure_hybridswap
+fi
+oplus_configure_tuning_swappiness
+#else
+#       configure_zram_parameters
+#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 	configure_read_ahead_kb_values
 	echo 100 > /proc/sys/vm/swappiness
 
@@ -191,8 +293,8 @@ echo 1 > /sys/devices/system/cpu/cpu7/core_ctl/nr_prev_assist_thresh
 echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
 
 # Setting b.L scheduler parameters
-echo 95 95 > /proc/sys/walt/sched_upmigrate
-echo 85 85 > /proc/sys/walt/sched_downmigrate
+echo 85 85 > /proc/sys/walt/sched_upmigrate
+echo 75 75 > /proc/sys/walt/sched_downmigrate
 echo 400 > /proc/sys/walt/sched_group_upmigrate
 echo 380 > /proc/sys/walt/sched_group_downmigrate
 echo 1 > /proc/sys/walt/sched_walt_rotate_big_tasks
@@ -220,8 +322,8 @@ echo 0 > /proc/sys/walt/sched_boost
 echo 0 > /proc/sys/kernel/sched_util_clamp_min_rt_default
 
 # Limit kswapd in cpu0-6
-echo `ps -elf | grep -v grep | grep kswapd0 | awk '{print $2}'` > /dev/cpuset/kswapd-like/tasks
-echo `ps -elf | grep -v grep | grep kcompactd0 | awk '{print $2}'` > /dev/cpuset/kswapd-like/tasks
+echo `pidof kswapd0` > /dev/cpuset/kswapd-like/tasks
+echo `pidof kcompactd0` > /dev/cpuset/kswapd-like/tasks
 
 # configure governor settings for silver cluster
 echo "walt" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
@@ -344,7 +446,7 @@ do
 done
 
 if [ "$rev" == "1.0" ]; then
-	echo Y > /sys/devices/system/cpu/qcom_lpm/parameters/sleep_disabled
+	echo N > /sys/devices/system/cpu/qcom_lpm/parameters/sleep_disabled
 	echo 1 > /sys/devices/system/cpu/cpu0/cpuidle/state1/disable
 	echo 1 > /sys/devices/system/cpu/cpu1/cpuidle/state1/disable
 	echo 1 > /sys/devices/system/cpu/cpu2/cpuidle/state1/disable
@@ -389,9 +491,9 @@ case "$console_config" in
 	;;
 esac
 
-chown -h system.system /sys/devices/system/cpu/cpufreq/policy0/schedutil/target_loads
-chown -h system.system /sys/devices/system/cpu/cpufreq/policy4/schedutil/target_loads
-chown -h system.system /sys/devices/system/cpu/cpufreq/policy7/schedutil/target_loads
+chown -h system.system /sys/devices/system/cpu/cpufreq/policy0/walt/target_loads
+chown -h system.system /sys/devices/system/cpu/cpufreq/policy4/walt/target_loads
+chown -h system.system /sys/devices/system/cpu/cpufreq/policy7/walt/target_loads
 
 #config fg and top cpu shares
 echo 5120 > /dev/cpuctl/top-app/cpu.shares

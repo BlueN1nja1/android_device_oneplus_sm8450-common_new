@@ -85,9 +85,6 @@ on early-init
     chown root system /dev/kmsg
     chmod 0620 /dev/kmsg
 
-    # Set qpsa modem enabled to prevent any skipping.
-    setprop ro.boot.vendor.qspa.modem enabled
-
 on init
 
     # Support legacy paths
@@ -102,6 +99,8 @@ on init
     chmod 0660 /sys/fs/cgroup/memory/bg/tasks
 
 on post-fs
+    mkdir /odm/vendor/vendor 0777 system system
+    symlink /odm/vendor/firmware /odm/vendor/vendor/firmware
 
 on early-boot
     # set RLIMIT_MEMLOCK to 64KB
@@ -124,15 +123,6 @@ on early-boot
     chmod 0664 /mnt/vendor/persist/data/pfm/licenses/store_4
 
 on boot
-    # Allow Thermal Engine to access available frequencies
-    chmod 0644 /sys/class/kgsl/kgsl-3d0/max_pwrlevel
-    chmod 0644 /sys/class/kgsl/kgsl-3d0/min_pwrlevel
-    chmod 0644 /sys/class/kgsl/kgsl-3d0/gpu_available_frequencies
-    chmod 0644 /sys/class/kgsl/kgsl-3d0/devfreq/available_frequencies
-    chmod 0644 /sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies
-    chmod 0644 /sys/devices/system/cpu/cpufreq/policy4/scaling_available_frequencies
-    chmod 0644 /sys/devices/system/cpu/cpufreq/policy7/scaling_available_frequencies
-
     chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/type
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/state
@@ -163,6 +153,9 @@ on boot
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/device/extldo
     chmod 0660 /sys/class/rfkill/rfkill0/device/extldo
     chown media audio /sys/kernel/snd_card/card_state
+
+    chown system root /proc/ufs_oplus_dir/ufs_oplus_ioctl
+    chmod 0660 /proc/ufs_oplus_dir/ufs_oplus_ioctl
 
     # This location is used by QCRIL to host UNIX domain
     # socket files used for internal IPC within QCRIL
@@ -204,9 +197,7 @@ on boot
     # bond0 used by FST Manager
     chown wifi wifi /sys/class/net/bond0/bonding/queue_id
 
-    # Allow access to emmc rawdump block partition and dload sysfs node
-    chown root system /dev/block/bootdevice/by-name/rawdump
-    chmod 0660 /dev/block/bootdevice/by-name/rawdump
+    # Allow access to dload sysfs node
     chown root system /sys/kernel/dload/emmc_dload
     chmod 0660 /sys/kernel/dload/emmc_dload
     chown root system /dev/block/bootdevice/by-name/ramdump
@@ -287,8 +278,8 @@ on post-fs-data
     mkdir /data/vendor/qtee 0770 system system
 
     #Create folder of camera
-    mkdir /data/vendor/camera 0770 camera camera
-
+    mkdir /data/vendor/camera 0777 camera camera
+    mkdir /data/vendor/camera_remote_dump 0777 root system
 
     #Create directory for tftp
     mkdir /data/vendor/tombstones 0771 system system
@@ -445,22 +436,6 @@ service iop /system/vendor/bin/iop
     disabled
     socket iop seqpacket 0666 root system
 
-service qcomsysd /system/vendor/bin/qcom-system-daemon
-    class main
-    user root
-    group root diag oem_2901
-    disabled
-
-# Not launch qcomsysd process in USER BUILD
-on property:persist.vendor.qcomsysd.enabled=1 && property:ro.build.type=userdebug
-    enable qcomsysd
-
-on property:persist.vendor.qcomsysd.enabled=1 && property:ro.build.type=eng
-    enable qcomsysd
-
-on property:persist.vendor.qcomsysd.enabled=0
-    stop qcomsysd
-
 service vendor.ssr_setup /system/vendor/bin/ssr_setup
     oneshot
     disabled
@@ -532,6 +507,12 @@ on property:sys.boot_completed=1
     chown media audio /sys/kernel/aud_dev/state
     write /sys/devices/virtual/cvp/cvp/boot 1
 
+on property:persist.vendor.radio.atfwd.start=false
+    stop vendor.atfwd
+
+on property:vendor.radio.atfwd.start=false
+    stop vendor.atfwd
+
 # corefile limit
 on property:persist.debug.trace=1
     mkdir /data/core 0777 root root
@@ -554,6 +535,10 @@ service qcom-c_main-sh /vendor/bin/init.class_main.sh
     user root
     group root system
     oneshot
+
+on property:vold.decrypt=trigger_restart_framework
+    start qcom-c_main-sh
+    start wcnss-service
 
 service irsc_util /vendor/bin/irsc_util "/vendor/etc/sec_config"
     class core
@@ -607,7 +592,7 @@ on property:sys.shutdown.requested=*
     write /sys/kernel/shutdown_wlan/shutdown 1
     stop cnss-daemon
 
-service ssgqmigd /vendor/bin/ssgqmigd64
+service ssgqmigd /vendor/bin/ssgqmigd
     class late_start
     user radio
     group radio gps system
@@ -618,6 +603,11 @@ service mlid /vendor/bin/mlid
     user gps
     group gps
     socket mlid stream 0666 gps gps
+
+service loc_launcher /system/vendor/bin/loc_launcher
+    class late_start
+    user gps
+    group gps
 
 service qcom-sh /vendor/bin/init.qcom.sh
     class late_start
@@ -659,6 +649,11 @@ service qvop-daemon /vendor/bin/qvop-daemon
     class late_start
     user system
     group system drmrpc
+
+service vendor.atfwd /vendor/bin/ATFWD-daemon
+    class late_start
+    user system
+    group system radio
 
 service hostapd_fst /vendor/bin/hw/hostapd -dd -g /data/vendor/wifi/hostapd/global
     class main
@@ -772,23 +767,12 @@ service esepmdaemon /system/vendor/bin/esepmdaemon
     group nfc
 
 on charger
-# 1. Wait for and mount the dynamic partitions
-    # The charger UI needs the display drivers inside /vendor to turn the screen on
-    wait /dev/block/mapper/system
-    wait /dev/block/mapper/vendor
-    mount_all /vendor/etc/fstab.qcom --early
-
-    # 2. Enable UFS LPM back (Your original power-saving lines)
+    #Enable UFS LPM back
     write /sys/bus/platform/devices/1d84000.ufshc/clkscale_enable 1
     write /sys/bus/platform/devices/1d84000.ufshc/auto_hibern8 5000
     write /sys/bus/platform/devices/1d84000.ufshc/clkgate_enable 1
-
-    # 3. Set USB configuration
     setprop persist.sys.usb.config mass_storage
-    setprop sys.usb.configfs 1
-
-    # 4. Start the AOSP charger service class
-    class_start charger
+    start qcom-post-boot
 
 #add poweroffhandler
 service poweroffhandler /system/vendor/bin/poweroffhandler
@@ -810,6 +794,10 @@ on property:vendor.rild.libpath=*
 
 on property:ro.vendor.radio.noril=*
     setprop ro.radio.noril ${ro.vendor.radio.noril}
+
+# Disengage shsusrd
+on property:init.svc.vendor.shsusrd=running
+    stop vendor.shsusrd
 
 service vendor.power_off_alarm /vendor/bin/power_off_alarm
     class core
@@ -847,3 +835,11 @@ on property:vendor.opengles.version=*
 #Set gpu available frequencies property
 on property:vendor.gpu.available_frequencies=*
     setprop ro.vendor.gpu.available_frequencies ${vendor.gpu.available_frequencies}
+
+on property:sys.boot_completed=1
+    stop qwesd
+    stop feature_enabler_client
+
+on early-boot
+    stop qwesd
+    stop feature_enabler_client

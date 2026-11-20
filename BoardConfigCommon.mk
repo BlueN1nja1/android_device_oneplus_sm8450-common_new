@@ -1,6 +1,5 @@
 #
-# Copyright (C) 2021-2025 The LineageOS Project
-#
+# SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -16,6 +15,7 @@ AB_OTA_PARTITIONS += \
     product \
     recovery \
     system \
+    system_dlkm \
     system_ext \
     vbmeta \
     vbmeta_system \
@@ -28,21 +28,16 @@ AB_OTA_PARTITIONS += \
 TARGET_ARCH := arm64
 TARGET_ARCH_VARIANT := armv8-a-branchprot
 TARGET_CPU_ABI := arm64-v8a
-TARGET_CPU_ABI2 :=
 TARGET_CPU_VARIANT := generic
-TARGET_CPU_VARIANT_RUNTIME := kryo300
+TARGET_CPU_VARIANT_RUNTIME := cortex-a76
 
 # Audio
 AUDIO_FEATURE_ENABLED_DLKM := true
-AUDIO_FEATURE_ENABLED_GEF_SUPPORT := true
+AUDIO_FEATURE_ENABLED_EXTENDED_COMPRESS_FORMAT := true
 AUDIO_FEATURE_ENABLED_GKI := true
 AUDIO_FEATURE_ENABLED_INSTANCE_ID := true
-AUDIO_FEATURE_ENABLED_PAL_HIDL := true
-AUDIO_FEATURE_ENABLED_PROXY_DEVICE := true
-AUDIO_FEATURE_ENABLED_SSR := true
+AUDIO_FEATURE_ENABLED_MCS := true
 AUDIO_FEATURE_ENABLED_SVA_MULTI_STAGE := true
-AUDIO_FEATURE_ENABLED_EXT_AMPLIFIER := true
-AUDIO_FEATURE_ENABLED_EXTENDED_COMPRESS_FORMAT := true
 BOARD_SUPPORTS_OPENSOURCE_STHAL := true
 BOARD_SUPPORTS_SOUND_TRIGGER := true
 BOARD_USES_ALSA_AUDIO := true
@@ -50,57 +45,139 @@ BOARD_USES_ALSA_AUDIO := true
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := taro
 
+# Boot
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
+BOARD_RAMDISK_USE_LZ4 := true
+
+# DTB / DTBO
+BOARD_INCLUDE_DTB_IN_BOOTIMG := true
+BOARD_KERNEL_SEPARATED_DTBO := true
+
 # Properties
-TARGET_ODM_PROP += $(COMMON_PATH)/odm.prop
-TARGET_PRODUCT_PROP += $(COMMON_PATH)/product.prop
-TARGET_SYSTEM_EXT_PROP += $(COMMON_PATH)/system_ext.prop
-TARGET_VENDOR_PROP += $(COMMON_PATH)/vendor.prop
+TARGET_ODM_PROP += $(COMMON_PATH)/properties/odm.prop
+TARGET_PRODUCT_PROP += $(COMMON_PATH)/properties/product.prop
+TARGET_SYSTEM_EXT_PROP += $(COMMON_PATH)/properties/system_ext.prop
+TARGET_VENDOR_PROP += $(COMMON_PATH)/properties/vendor.prop
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(COMMON_PATH)/config.fs
 
 # Kernel
-BOARD_BOOT_HEADER_VERSION := 4
-BOARD_BOOTCONFIG:= \
+BOARD_BOOTCONFIG := \
     androidboot.hardware=qcom \
+    androidboot.load_modules_parallel=performance \
     androidboot.memcg=1 \
-    androidboot.usbcontroller=a600000.dwc3
-BOARD_KERNEL_BASE := 0x00000000
-BOARD_KERNEL_IMAGE_NAME := Image
-BOARD_KERNEL_PAGESIZE := 4096
-BOARD_KERNEL_SEPARATED_DTBO := true
-BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
-BOARD_RAMDISK_USE_LZ4 := true
+    androidboot.serialconsole=0 \
+    androidboot.usbcontroller=a600000.dwc3 \
+    androidboot.vbmeta.digest=a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90
+
+BOARD_KERNEL_CMDLINE := \
+    console=ttynull \
+    log_buf_len=2M \
+    nohugevmalloc \
+    nosoftlockup \
+    qcom_geni_serial.con_enabled=0 \
+    scsi_mod.scan=sync
+
 BOARD_USES_GENERIC_KERNEL_IMAGE := true
-BOARD_USES_QCOM_MERGE_DTBS_SCRIPT := true
+BOARD_KERNEL_BASE := 0x00000000
+BOARD_KERNEL_PAGESIZE := 4096
+BOARD_KERNEL_IMAGE_NAME := Image
+
+TARGET_KERNEL_VERSION := 6.6
 TARGET_KERNEL_SOURCE := kernel/oneplus/sm8450
-TARGET_KERNEL_CONFIG := gki_defconfig vendor/waipio_GKI.config vendor/oplus_GKI.config vendor/debugfs.config
+
+TARGET_KERNEL_ADDITIONAL_FLAGS := \
+    CONFIG_EXCLUDE_ICNSS=y \
+    CONFIG_OPLUS_DEVICE_DTBS=y \
+    CONFIG_OPLUS_FEATURE_DUMP_DEVICE_INFO=m \
+    CONFIG_OPLUS_FEATURE_MDMFEATURE=m \
+    CONFIG_OPLUS_FEATURE_PMIC_MONITOR=m \
+    CONFIG_OPLUS_FEATURE_SENSOR_CFG=m \
+    CONFIG_OPLUS_FINGERPRINT_COMMON=m \
+    CONFIG_OPLUS_FPGA_MONITOR=m \
+    CONFIG_OPLUS_SENSOR_FB_QC=m \
+    CONFIG_OPLUS_TRIKEY_HALL=m \
+    CONFIG_OPLUS_TRIKEY_MAIN=m \
+    CONFIG_TOUCHPANEL_CUSTOM=m \
+    CONFIG_TOUCHPANEL_OPLUS=m \
+    CONFIG_TOUCHPANEL_SYNAPTICS=m \
+    CONFIG_TOUCHPANEL_SYNAPTICS_TCM_ONCELL=m \
+    CONFIG_TOUCHPANEL_SYNAPTICS_TCM_S3910=m \
+    CONFIG_TOUCHSCREEN_FTS=m \
+    CONFIG_TOUCHSCREEN_HBP_CORE=m \
+    CONFIG_TOUCHSCREEN_HBP_SYNA_S3910=m
+TARGET_KERNEL_CONFIG := \
+    gki_defconfig \
+    vendor/waipio_perf.config \
+    vendor/oplus/waipio_perf.config
+TARGET_KERNEL_CONFIG_EXT := $(COMMON_PATH)/kernel_release.config
 
 # Kernel modules
+BOARD_SYSTEM_KERNEL_MODULES_LOAD := $(strip $(shell sed 's/#.*$$//;/^$$/d' $(COMMON_PATH)/modules.load.system_dlkm))
 BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE := $(TARGET_KERNEL_SOURCE)/modules.vendor_blocklist.msm.waipio
 BOARD_VENDOR_KERNEL_MODULES_LOAD := $(strip $(shell cat $(COMMON_PATH)/modules.load))
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE)
-BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(strip $(shell cat $(COMMON_PATH)/modules.load.vendor_boot))
+# qrtr-gunyah.ko is detected by depmod of build_utils.sh in kleaf
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := \
+    $(strip $(shell sed 's/#.*$$//;/^$$/d' $(COMMON_PATH)/modules.list.msm.waipio)) \
+    qrtr-gunyah.ko
 BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD := $(strip $(shell cat $(COMMON_PATH)/modules.load.recovery))
-BOOT_KERNEL_MODULES := $(strip $(shell cat $(COMMON_PATH)/modules.load.recovery))
+BOOT_KERNEL_MODULES := $(BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD)
+SYSTEM_KERNEL_MODULES := \
+    $(BOARD_SYSTEM_KERNEL_MODULES_LOAD) \
+    $(strip $(shell sed 's/#.*$$//;/^$$/d' $(COMMON_PATH)/modules.kunit))
+
 TARGET_KERNEL_EXT_MODULE_ROOT := kernel/oneplus/sm8450-modules
 TARGET_KERNEL_EXT_MODULES := \
+    oplus/kernel/device_info/oplus_fpga/fpga_monitor:kbuild \
     qcom/opensource/mmrm-driver \
+    qcom/opensource/mm-drivers/hw_fence \
+    qcom/opensource/mm-drivers/msm_ext_display \
+    qcom/opensource/mm-drivers/sync_fence \
     qcom/opensource/audio-kernel \
+    qcom/opensource/securemsm-kernel \
+    qcom/opensource/synx-kernel-v1 \
     qcom/opensource/camera-kernel \
+    qcom/opensource/datarmnet-ext/mem \
     qcom/opensource/dataipa/drivers/platform/msm \
     qcom/opensource/datarmnet/core \
     qcom/opensource/datarmnet-ext/aps \
     qcom/opensource/datarmnet-ext/offload \
-    qcom/opensource/datarmnet-ext/shs \
     qcom/opensource/datarmnet-ext/perf \
     qcom/opensource/datarmnet-ext/perf_tether \
     qcom/opensource/datarmnet-ext/sch \
+    qcom/opensource/datarmnet-ext/shs \
     qcom/opensource/datarmnet-ext/wlan \
     qcom/opensource/display-drivers/msm \
-    qcom/opensource/eva-kernel \
+    qcom/opensource/dsp-kernel \
+    qcom/opensource/eva-kernel-v1 \
+    qcom/opensource/graphics-kernel \
+    qcom/opensource/spu-kernel \
     qcom/opensource/video-driver \
-    qcom/opensource/wlan/qcacld-3.0/.qca6490
+    qcom/opensource/wlan/platform \
+    qcom/opensource/wlan/qcacld-3.0/.qca6490 \
+    qcom/opensource/bt-kernel
+
+TARGET_KERNEL_EXT_MODULES += \
+    oplus/hardware/radio/kernel/mdmfeature:kbuild \
+    oplus/kernel/cpu/thermal:kbuild \
+    oplus/kernel/device_info/tri_state_key:kbuild \
+    oplus/kernel/dfr:kbuild \
+    oplus/kernel/network/oplus_network_oem_qmi:kbuild \
+    oplus/kernel/network/oplus_network_esim:kbuild \
+    oplus/kernel/network/oplus_network_sim_detect:kbuild \
+    oplus/kernel/network/oplus_rf_cable_monitor:kbuild \
+    oplus/kernel/nfc/oplus_nfc:kbuild \
+    oplus/kernel/touchpanel/oplus_touchscreen_v2/touch_custom:kbuild \
+    oplus/kernel/touchpanel/oplus_touchscreen_v2:kbuild \
+    oplus/kernel/touchpanel/synaptics_hbp:kbuild \
+    oplus/kernel/tp/hbp/hbp:kbuild \
+    oplus/secure/biometrics/fingerprints/bsp/drivers_kernel/component3.0/qcom:kbuild \
+    oplus/secure/common/bsp/drivers/oplus_secure_common \
+    oplus/sensor/kernel/qcom/sensor:kbuild \
+    nxp/opensource/driver
 
 # Platform
 BOARD_USES_QCOM_HARDWARE := true
@@ -109,40 +186,36 @@ TARGET_BOARD_PLATFORM := taro
 # Metadata
 BOARD_USES_METADATA_PARTITION := true
 
-# Packaging
-WITH_DEXPREOPT := true
-WITH_DEXPREOPT_BOOT_IMG_AND_SYSTEM_SERVER_ONLY := false
-DONT_DEXPREOPT_PREBUILTS := false
-
 # Partitions
 BOARD_PRODUCTIMAGE_MINIMAL_PARTITION_RESERVED_SIZE := false
 -include vendor/infinity/config/BoardConfigReservedSize.mk
 BOARD_BOOTIMAGE_PARTITION_SIZE := 201326592
 BOARD_DTBOIMG_PARTITION_SIZE := 25165824
-BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 112362319872
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 201326592
+BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := erofs
 BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := erofs
 BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_QTI_DYNAMIC_PARTITIONS_PARTITION_LIST := odm product system system_ext vendor vendor_dlkm
-BOARD_QTI_DYNAMIC_PARTITIONS_SIZE ?= 11270094848 # (BOARD_SUPER_PARTITION_SIZE - 4MB)
-BOARD_SUPER_PARTITION_GROUPS := qti_dynamic_partitions
+BOARD_ONEPLUS_DYNAMIC_PARTITIONS_PARTITION_LIST := odm product system system_dlkm system_ext vendor vendor_dlkm
 BOARD_SUPER_PARTITION_SIZE ?= 11274289152
+BOARD_ONEPLUS_DYNAMIC_PARTITIONS_SIZE := $(shell echo $$(($(BOARD_SUPER_PARTITION_SIZE) - 4194304))) # (BOARD_SUPER_PARTITION_SIZE - "reasonable overhead of 4 MiB")
+BOARD_SUPER_PARTITION_GROUPS := oneplus_dynamic_partitions
 BOARD_FLASH_BLOCK_SIZE := 262144 # (BOARD_KERNEL_PAGESIZE * 64)
 TARGET_COPY_OUT_ODM := odm
 TARGET_COPY_OUT_PRODUCT := product
+TARGET_COPY_OUT_SYSTEM_DLKM := system_dlkm
 TARGET_COPY_OUT_SYSTEM_EXT := system_ext
 TARGET_COPY_OUT_VENDOR := vendor
 TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 
 # Recovery
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
-BOARD_INCLUDE_DTB_IN_BOOTIMG := true
-TARGET_RECOVERY_FSTAB := $(COMMON_PATH)/init/fstab.qcom
+TARGET_RECOVERY_FSTAB := $(COMMON_PATH)/init/fstab.default
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
@@ -151,17 +224,18 @@ TARGET_USERIMAGES_USE_F2FS := true
 ENABLE_VENDOR_RIL_SERVICE := true
 
 # Security
-BOOT_SECURITY_PATCH := 2026-06-05
+BOOT_SECURITY_PATCH := 2026-09-01
 VENDOR_SECURITY_PATCH := $(BOOT_SECURITY_PATCH)
 
 # SEPolicy
-include device/qcom/sepolicy_vndr/SEPolicy.mk
+include device/qcom/sepolicy_vndr/sm8750/SEPolicy.mk
+include device/lineage/sepolicy/qcom/sepolicy.mk
 include hardware/oplus/sepolicy/qti/SEPolicy.mk
 
 # Verified Boot
 BOARD_AVB_ENABLE := true
-BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --set_hashtree_disabled_flag
-BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --set_verification_disabled_flag
+BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
+BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR_BOOT := true
 
 BOARD_AVB_BOOT_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
 BOARD_AVB_BOOT_ALGORITHM := SHA256_RSA4096
@@ -178,7 +252,7 @@ BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA4096
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 
-BOARD_AVB_VBMETA_SYSTEM := system system_ext product
+BOARD_AVB_VBMETA_SYSTEM := system system_dlkm system_ext product
 BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA4096
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
@@ -202,10 +276,14 @@ BOARD_HOSTAPD_PRIVATE_LIB := lib_driver_cmd_$(BOARD_WLAN_DEVICE)
 BOARD_WPA_SUPPLICANT_DRIVER := $(BOARD_HOSTAPD_DRIVER)
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB := $(BOARD_HOSTAPD_PRIVATE_LIB)
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB_EVENT := "ON"
+WIFI_DRIVER_STATE_CTRL_PARAM := "/dev/wlan"
+WIFI_DRIVER_STATE_OFF := "OFF"
+WIFI_DRIVER_STATE_ON := "ON"
 WIFI_FEATURE_HOSTAPD_11AX := true
 WIFI_HIDL_FEATURE_AWARE := true
 WIFI_HIDL_FEATURE_DUAL_INTERFACE := true
 WIFI_HIDL_UNIFIED_SUPPLICANT_SERVICE_RC_ENTRY := true
+WPA_SUPPLICANT_VERSION := VER_0_8_X
 
 # Include the proprietary files BoardConfig.
 include vendor/oneplus/sm8450-common/BoardConfigVendor.mk

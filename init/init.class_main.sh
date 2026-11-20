@@ -48,13 +48,13 @@ case "$baseband" in
         "tethered")
             start vendor.dataqti
             if [ "$low_ram" != "true" ]; then
-              start vendor.dataadpl
+                start vendor.dataadpl
             fi
             ;;
         "concurrent")
             start vendor.dataqti
             if [ "$low_ram" != "true" ]; then
-              start vendor.dataadpl
+                start vendor.dataadpl
             fi
             ;;
         *)

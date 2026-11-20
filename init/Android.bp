@@ -1,28 +1,23 @@
 //
-// Copyright (C) 2022 The LineageOS Project
+// SPDX-FileCopyrightText: The LineageOS Project
 // SPDX-License-Identifier: Apache-2.0
 //
 
 cc_library_static {
     name: "libinit_oplus",
     recovery_available: true,
-    shared_libs: ["libbase"],
+    shared_libs: [
+        "libbase",
+        "libfs_mgr",
+    ],
     srcs: ["init_oplus.cpp"],
 }
 
 prebuilt_etc {
-    name: "fstab.qcom",
-    src: "fstab.qcom",
+    name: "fstab.default",
+    src: "fstab.default",
     vendor: true,
     vendor_ramdisk_available: true,
-}
-
-prebuilt_etc {
-    name: "init.oplus.hw.rc",
-    src: "init.oplus.hw.rc",
-    sub_dir: "init",
-    device_specific: true,
-    recovery_available: true,
 }
 
 prebuilt_etc {
@@ -44,6 +39,13 @@ prebuilt_etc {
     src: "init.qcom.recovery.rc",
     sub_dir: "init",
     recovery: true,
+}
+
+prebuilt_etc {
+    name: "init.qti.kernel.rc",
+    src: "init.qti.kernel.rc",
+    sub_dir: "init/hw",
+    vendor: true,
 }
 
 prebuilt_etc {
@@ -74,14 +76,8 @@ sh_binary {
 }
 
 sh_binary {
-    name: "init.qcom.early_boot.sh",
-    src: "init.qcom.early_boot.sh",
-    vendor: true,
-}
-
-sh_binary {
-    name: "init.kernel.post_boot-cape.sh",
-    src: "init.kernel.post_boot-cape.sh",
+    name: "init.kernel.post_boot-memory.sh",
+    src: "init.kernel.post_boot-memory.sh",
     vendor: true,
 }
 
@@ -90,13 +86,21 @@ sh_binary {
     src: "init.kernel.post_boot-taro.sh",
     vendor: true,
 }
+
+sh_binary {
+    name: "init.qcom.early_boot.sh",
+    src: "init.qcom.early_boot.sh",
+    vendor: true,
+}
+
 sh_binary {
     name: "init.qcom.sh",
     src: "init.qcom.sh",
     vendor: true,
 }
-prebuilt_etc {
-    name: "fstab.zram",
-    src: "fstab.zram",
+
+sh_binary {
+    name: "init.kernel.post_boot.sh",
+    src: "init.kernel.post_boot.sh",
     vendor: true,
 }

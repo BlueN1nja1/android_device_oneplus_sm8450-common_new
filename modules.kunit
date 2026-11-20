@@ -1,0 +1,24 @@
+# _KUNIT_FRAMEWORK_MODULES
+kunit.ko
+
+# _KUNIT_COMMON_MODULES_LIST
+regmap-kunit.ko
+regmap-ram.ko
+regmap-raw-ram.ko
+hid-uclogic-test.ko
+iio-test-format.ko
+input_test.ko
+lib_test.ko
+ext4-inode-test.ko
+fat_test.ko
+time_test.ko
+kunit-example-test.ko
+kunit-test.ko
+# kfence_test.ko
+dev_addr_lists_test.ko
+soc-topology-test.ko
+soc-utils-test.ko
+
+# _KUNIT_CLK_MODULES_LIST
+clk-gate_test.ko
+clk_test.ko

@@ -25,7 +25,7 @@ using android::base::Trim;
 namespace {
 
     constexpr const char* kPartitionPrefixes[] = {
-        "", "system.", "system_ext.", "product.", "vendor.", "odm.", "vendor_dlkm.", "system_dlkm."
+        "", "bootimage.", "system.", "system_ext.", "product.", "vendor.", "odm.", "vendor_dlkm.", "system_dlkm."
     };
 
     constexpr const char* kBaseFingerprint =
@@ -91,8 +91,13 @@ namespace {
 
 void vendor_process_bootenv() {
     std::string oplus_bootmode;
-    if ((android::fs_mgr::GetKernelCmdline("oplusboot.mode", &oplus_bootmode) && oplus_bootmode == "charger") ||
-        GetProperty("ro.boot.mode", "") == "charger") {
+    std::string oplus_startupmode;
+    if ((android::fs_mgr::GetKernelCmdline("oplusboot.mode", &oplus_bootmode) &&
+        oplus_bootmode == "charger") ||
+        (android::fs_mgr::GetKernelCmdline("oplusboot.startupmode", &oplus_startupmode) &&
+        oplus_startupmode == "usb_charger") ||
+        GetProperty("ro.boot.mode", "") == "charger" ||
+        GetProperty("ro.boot.startupmode", "") == "usb_charger") {
         OverrideProperty("ro.boot.mode", "charger");
     OverrideProperty("ro.bootmode", "charger");
         }

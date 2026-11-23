@@ -68,6 +68,9 @@ blob_fixups: blob_fixups_user_type = {
         .apktool_patch('blob-patches/WfdCommon.patch'),
     'system_ext/bin/horae': blob_fixup()
         .replace_needed('libprotobuf-cpp-lite.so', 'libprotobuf-cpp-lite-21.7.so'),
+    'vendor/bin/init.qti.qcv.sh': blob_fixup()
+        .regex_replace('setprop ro.vendor.media_performance_class 31',
+                       'setprop ro.vendor.media_performance_class 33'),
     (
         'system_ext/etc/seccomp_policy/tcmd.policy',
         'vendor/etc/seccomp_policy/syshealthmon.policy'

@@ -6,48 +6,31 @@
 
 #include "CameraProviderExtension.h"
 
-#include <fstream>
-#include <unistd.h>
+#include <algorithm>
+#include <atomic>
+#include <cmath>
 #include <android-base/properties.h>
 #include <string>
 
-static const std::string kTorchBrightness = "brightness";
-static const std::string kTorchMaxBrightness = "max_brightness";
-static const std::string kToggleSwitchPath = "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:switch_1/brightness";
+static constexpr int32_t kUiMaxLevel = 100;
+static constexpr int32_t kUiDefaultLevel = 65;
 
-static std::string kTorchLedPaths[] = {
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_0",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_1",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_2",
-    "/sys/devices/platform/soc/c42d000.qcom,spmi/spmi-0/0-02/c42d000.qcom,spmi:qcom,pm8350c@2:qcom,flash_led@ee00/leds/led:torch_3",
-};
+static constexpr int32_t kHwStepMa = 5;          // PM8350C qcom,ires-ua = 5000 uA
+static constexpr int32_t kMinHwBrightness = 5;
+static constexpr int32_t kMaxHwBrightness = 250; // Dual-LED hardware ceiling under all switches
+static constexpr double kPerceptualGamma = 1.8;
 
-/**
- * Write value to path, explicitly flush, and close file.
- */
-template <typename T>
-static void set(const std::string& path, const T& value) {
-    std::ofstream file(path);
-    if (file.is_open()) {
-        file << value;
-        file.flush();
-        file.close();
-    }
-}
+static std::atomic<int32_t> sCurrentUiLevel{0};
+static std::atomic<int32_t> sLastHwLevel{0};
+static std::atomic<bool> sTorchEnabled{false};
 
-/**
- * Read value from the path and close file.
- */
-template <typename T>
-static T get(const std::string& path, const T& def) {
-    std::ifstream file(path);
-    T result;
-
-    file >> result;
-    if (file.is_open()) {
-        file.close();
-    }
-    return file.fail() ? def : result;
+static int32_t uiLevelToHwBrightness(int32_t uiLevel) {
+    int32_t clamped = std::clamp(uiLevel, 1, kUiMaxLevel);
+    double norm = static_cast<double>(clamped - 1) / static_cast<double>(kUiMaxLevel - 1);
+    double curved = std::pow(norm, kPerceptualGamma);
+    double rawMa = kMinHwBrightness + (kMaxHwBrightness - kMinHwBrightness) * curved;
+    int32_t quantized = static_cast<int32_t>(std::lround(rawMa / kHwStepMa)) * kHwStepMa;
+    return std::clamp(quantized, kMinHwBrightness, kMaxHwBrightness);
 }
 
 bool supportsTorchStrengthControlExt() {
@@ -55,53 +38,49 @@ bool supportsTorchStrengthControlExt() {
 }
 
 bool supportsSetTorchModeExt() {
-    return false;
+    return true;
 }
 
 int32_t getTorchMaxStrengthLevelExt() {
-    // SAFE FIX: Read the actual safe maximum from the kernel node.
-    // If the node can't be read, fallback to a safe 200.
-    auto node = kTorchLedPaths[0] + "/" + kTorchMaxBrightness;
-    return get(node, 200);
+    return kUiMaxLevel;
 }
 
 int32_t getTorchDefaultStrengthLevelExt() {
-    // Dynamically set default to whatever the current max is.
-    return getTorchMaxStrengthLevelExt();
+    return kUiDefaultLevel;
 }
 
 int32_t getTorchStrengthLevelExt() {
-    auto node = kTorchLedPaths[0] + "/" + kTorchBrightness;
-    return get(node, 0);
+    return sCurrentUiLevel.load();
 }
 
 void setTorchStrengthLevelExt(int32_t torchStrength, bool enabled) {
-    if (!enabled) {
+    if (!enabled || torchStrength <= 0) {
+        sCurrentUiLevel.store(0);
+        sLastHwLevel.store(0);
+        sTorchEnabled.store(false);
         android::base::SetProperty("camera.torch.enabled", "0");
-
-        // Graceful Step-Down Sequence (Prevents PMIC panic)
-        for (const auto& path : kTorchLedPaths) {
-            set(path + "/" + kTorchBrightness, 0);
-        }
-
-        // Kill the master switch only after LDOs are zeroed
-        set(kToggleSwitchPath, 0);
+        android::base::SetProperty("camera.torch.level", "0");
         return;
     }
 
-    android::base::SetProperty("camera.torch.level", std::to_string(torchStrength));
-    android::base::SetProperty("camera.torch.enabled", "1");
+    int32_t clamped = std::clamp(torchStrength, 1, kUiMaxLevel);
+    sCurrentUiLevel.store(clamped);
 
-    // We no longer force max_brightness. We respect the kernel limits.
-    for (const auto& path : kTorchLedPaths) {
-        set(path + "/" + kTorchBrightness, torchStrength);
+    int32_t hwLevel = uiLevelToHwBrightness(clamped);
+    bool wasEnabled = sTorchEnabled.exchange(true);
+
+    if (!wasEnabled) {
+        sLastHwLevel.store(hwLevel);
+        android::base::SetProperty("camera.torch.level", std::to_string(hwLevel));
+        android::base::SetProperty("camera.torch.enabled", "1");
+        return;
     }
 
-    // Commit the brightness targets
-    set(kToggleSwitchPath, 1);
+    if (sLastHwLevel.exchange(hwLevel) != hwLevel) {
+        android::base::SetProperty("camera.torch.level", std::to_string(hwLevel));
+    }
 }
 
 void setTorchModeExt(bool enabled) {
-    int32_t strength = getTorchDefaultStrengthLevelExt();
-    setTorchStrengthLevelExt(enabled ? strength : 0, enabled);
+    setTorchStrengthLevelExt(enabled ? getTorchDefaultStrengthLevelExt() : 0, enabled);
 }
